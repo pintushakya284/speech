@@ -2,8 +2,9 @@ from flask import Flask, render_template, request, jsonify
 from googletrans import Translator
 from gtts import gTTS
 import speech_recognition as sr
+import os
+import uuid
 import logging
-import io
 
 app = Flask(__name__)
 translator = Translator()
@@ -20,18 +21,23 @@ def index():
 @app.route('/recognize', methods=['POST'])
 def recognize():
     try:
-        audio_data = request.files['audio'].read()
-        with io.BytesIO(audio_data) as source:
+        audio_file = request.files['audio']
+        audio_path = os.path.join('static', 'audio', f"{uuid.uuid4()}.wav")
+        audio_file.save(audio_path)
+
+        with sr.AudioFile(audio_path) as source:
+            recognizer.adjust_for_ambient_noise(source, duration=1)
             audio = recognizer.record(source)
-            text = recognize_human_speech(audio)
+
+            text = recognize_sphinx(audio)
             return jsonify({'recognized_text': text})
     except Exception as e:
         logger.error(f"Error in recognize: {e}")
         return jsonify({'recognized_text': '', 'error': str(e)})
 
-def recognize_human_speech(audio):
+def recognize_sphinx(audio):
     try:
-        text = recognizer.recognize_google(audio, language='en-US', show_all=False)
+        text = recognizer.recognize_sphinx(audio)
         return text
     except sr.UnknownValueError:
         return ''
@@ -65,13 +71,14 @@ def text_to_speech():
 
     try:
         tts = gTTS(text=text, lang=lang)
-        audio_file = io.BytesIO()
-        tts.write_to_fp(audio_file)
-        audio_file.seek(0)
-        return jsonify({'audio': audio_file.read().decode('latin-1')})
+        filename = f"{uuid.uuid4()}.mp3"
+        filepath = os.path.join('static', 'audio', filename)
+        tts.save(filepath)
+        return jsonify({'audio_url': f'/static/audio/{filename}'})
     except Exception as e:
         logger.error(f"Error in text-to-speech: {e}")
         return jsonify({'error': str(e)})
 
 if __name__ == '__main__':
+    os.makedirs(os.path.join('static', 'audio'), exist_ok=True)
     app.run(debug=True)
