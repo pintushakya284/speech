@@ -27,7 +27,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "/"  # Update with the path to your app files
-          output_location: "dist"  # Update with the build output location if different
+          output_location: "app"  # Update with the correct build output location
           api_location: ""  # Update with the path to your API code if applicable
 
   close_pull_request_job:
